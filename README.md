@@ -31,6 +31,7 @@ In reality, the relation between battery capacity and its voltage is better repr
   - [Single-cell Li-Ion on 3.3V MCU](#single-cell-li-ion-on-33v-mcu)
   - [Double cell Li-Ion (2S) on 5V MCU](#double-cell-li-ion-2s-on-5v-mcu)
   - [9V Alkaline on 5V MCU](#9v-alkaline-on-5v-mcu)
+- [Non-blocking Manner](#non-blocking-manner)
 <!-- tocstop -->
 
 ## How to
@@ -168,7 +169,7 @@ You can use [this nice website](http://www.ohmslawcalculator.com/voltage-divider
 
 The *voltage divider total resistance*, made of `R1 + R2`, will determine the current drawn from your battery by the sensing circuit: lower is the total resistance and more accurate are your readings, higher the resistance and less current is drawn from your battery ([Ohm's law](http://www.ohmslawcalculator.com/ohms-law-calculator) rulez!). My suggestion is to keep this value within 20k-22k Ohm when using an *always-connected* circuit and under 10k Ohm if you use an *on-demand* configuration.
 
-When determining the *ratio* don't stick with the resistors nominal values, instead, if possible, use a multimeter to actually measure their resistance so to improve your results: a `4.7kΩ` resistor could easily be a `4.75kΩ` in reality!
+When determining the *ratio* don't stick with the resistors nominal values, instead, if possible, use a multimeter to actually measure their resistance so to improve your results: a `4.7kΩ` resistor could easily be a `4.75kΩ` in reality!
 
 ## Remaining capacity approximation
 The `level` available functions aim at providing an approximation of the remaining battery capacity in percentage. This is not an easy task when you want to achieve reliable values and it is something the industry of mobile devices invests a decent amount of resources.
@@ -225,7 +226,7 @@ I strongly encourage you to determine the function that best matches your partic
 Here follow a few real case scenarios which can guide you in using this library.
 
 ### Single-cell Li-Ion on 3.3V MCU
-As an example, for a single cell Li-Ion battery (4.2V - 3.7V) powering a `3.3V MCU`, you'll need to use a voltage divider with a ratio no less than `1.3`. Considering only E6 resistors, you can use a `4.7kΩ` (R1) and a `10kΩ` (R2) to set a ratio of `1.47`: this allows to measure batteries with a maximum voltage of `4.85V`, well within the swing of a Li-Ion. It's a little too current hungry for my tastes in an *always-connected* configuration, but still ok. Considering the chemistry maps pretty well to our sigmoidal approximation function I'm going to set it accordingly along with the minimum voltage which lowest safe value clearly is 3.0V (if a Li-Ion is drained below `3.0V` the risk of permanent damage is high), so your code should look like:
+As an example, for a single cell Li-Ion battery (4.2V - 3.7V) powering a `3.3V MCU`, you'll need to use a voltage divider with a ratio no less than `1.3`. Considering only E6 resistors, you can use a `4.7kΩ` (R1) and a `10kΩ` (R2) to set a ratio of `1.47`: this allows to measure batteries with a maximum voltage of `4.85V`, well within the swing of a Li-Ion. It's a little too current hungry for my tastes in an *always-connected* configuration, but still ok. Considering the chemistry maps pretty well to our sigmoidal approximation function I'm going to set it accordingly along with the minimum voltage which lowest safe value clearly is 3.0V (if a Li-Ion is drained below `3.0V` the risk of permanent damage is high), so your code should look like:
 
 ```cpp
 Battery batt = Battery(3000, 4200, SENSE_PIN);
@@ -238,7 +239,7 @@ void setup() {
 ```
 
 ### Double cell Li-Ion (2S) on 5V MCU
-For a double cell Li-Ion battery (8.4V - 7.4V) powering a `5V MCU`, you'll need to use a voltage divider with a ratio no less than `1.68`: you can use a `6.8kΩ` (R1) and a `10kΩ` (R2) to set the ratio *precisely* at `1.68`, perfect for our `8.4V` battery pack. The circuit will continuously draw 0.5mA in an *always-connected* configuration, if you can live with that. As we don't want to ruin our battery pack and we don't want to rush from 20% to empty in afew seconds, we'll have to set the minimum voltage to `7.4V` (with a _linear_ mapping) to avoid the risk of permanent damage, meaning your code should look like:
+For a double cell Li-Ion battery (8.4V - 7.4V) powering a `5V MCU`, you'll need to use a voltage divider with a ratio no less than `1.68`: you can use a `6.8kΩ` (R1) and a `10kΩ` (R2) to set the ratio *precisely* at `1.68`, perfect for our `8.4V` battery pack. The circuit will continuously draw 0.5mA in an *always-connected* configuration, if you can live with that. As we don't want to ruin our battery pack and we don't want to rush from 20% to empty in afew seconds, we'll have to set the minimum voltage to `7.4V` (with a _linear_ mapping) to avoid the risk of permanent damage, meaning your code should look like:
 
 ```cpp
 Battery batt = Battery(7400, 8400, SENSE_PIN); 
@@ -253,7 +254,7 @@ void setup() {
 > **NOTE**: I could have used the _sigmoidal_ approximation, as the chemistry fits pretty well on the curve, in which case a `7V` minimum voltage would have been a better configuration value.
 
 ### 9V Alkaline on 5V MCU
-Another classic example might be a single 9V Alkaline battery (9V - 6V) powering a `5V MCU`. In this case, you'll need to use a voltage divider with a ratio no less than `1.8` and, for sake of simplicity, we'll go for a nice round `2` ratio. Using a nice `10kΩ` both for R1 and R2 we'll be able to measure batteries with a maximum voltage of `10V` consuming only 0.45mA. The trick here is to determine when our battery should be considered empty: a 9V Alkaline, being a non-rechargeable one, can potentially go down to 0V, but it's hard our board can still be alive when this occurs. Assuming we are using a linear regulator to step down the battery voltage to power our board we'll have to account for the regulator voltage drop: assuming it's a `1.2V` drop, we might safely consider our battery empty when it reaches `6.2V` (5V + 1.2V), leading to the following code:
+Another classic example might be a single 9V Alkaline battery (9V - 6V) powering a `5V MCU`. In this case, you'll need to use a voltage divider with a ratio no less than `1.8` and, for sake of simplicity, we'll go for a nice round `2` ratio. Using a nice `10kΩ` both for R1 and R2 we'll be able to measure batteries with a maximum voltage of `10V` consuming only 0.45mA. The trick here is to determine when our battery should be considered empty: a 9V Alkaline, being a non-rechargeable one, can potentially go down to 0V, but it's hard our board can still be alive when this occurs. Assuming we are using a linear regulator to step down the battery voltage to power our board we'll have to account for the regulator voltage drop: assuming it's a `1.2V` drop, we might safely consider our battery empty when it reaches `6.2V` (5V + 1.2V), leading to the following code:
 
 ```cpp
 Battery batt = Battery(6200, 9000, SENSE_PIN);
@@ -264,3 +265,21 @@ void setup() {
   batt.begin(5000, 2.0);
 }
 ```
+
+## Non-blocking Manner
+*(Added by Mickey Chan)*
+
+In most use case, using blocking delay() may cause problem, Such as timer or web server. `Battery::loop()` is the non-blocking solution. Put `Battery::loop()` inside `loop()` method in sketch will let `Battery` library update battery voltage reading in certain period of time (every 10 seconds by default). You may set the update interval using `Battery::setUpdateInterval()` method.
+
+```cpp
+battery.setUpdateInterval(5000); // update voltage every 5 second
+```
+
+**Note:** Since there are some seconds buffer time for stableizing ADC and startup activate pin, the actual update time will be _update interval + 3 seconds_.
+
+You may retrieve the reading from `Battery::lastVoltage` object property and use `Battery::level()` method to calculate the state of charge as usual.
+
+```cpp
+batt.level(batt.prevVoltage);
+```
+
