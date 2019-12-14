@@ -1,6 +1,6 @@
 #include <Battery.h>
 
-Battery battery(3000, 4200, A0);
+Battery battery(3000, 4200, A0, 1024);
 /**
  * 1 cell li-ion/li-poly battery wired to A0, continuous sensing, sigmoidal mapping function, cut off at 3000mV
  * https://github.com/rlogiacco/BatterySense#lesser-than-5v-with-voltage-booster
@@ -8,6 +8,7 @@ Battery battery(3000, 4200, A0);
 void setup() {
 	Serial.begin(9600);
 	while (!Serial);
+  pinMode(13, OUTPUT);
 	battery.begin(5000, 1.0, &sigmoidal);
 }
 

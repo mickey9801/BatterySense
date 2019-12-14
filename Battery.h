@@ -14,6 +14,8 @@
 
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ Fork by Mickey Chan
  */
 
 #ifndef BATTERY_H_
@@ -22,6 +24,12 @@
 #include <Arduino.h>
 
 typedef uint8_t(*mapFn_t)(uint16_t, uint16_t, uint16_t);
+
+typedef enum {
+  IDLE,
+  PASS_1,
+  PASS_2
+} readState_t;
 
 class Battery {
 	public:
@@ -33,7 +41,7 @@ class Battery {
 		 * @param maxVoltage is the voltage, expressed in millivolts, corresponding to a full battery
 		 * @param sensePin is the analog pin used for sensing the battery voltage
 		 */
-		Battery(uint16_t minVoltage, uint16_t maxVoltage, uint8_t sensePin);
+		Battery(uint16_t minVoltage, uint16_t maxVoltage, uint8_t sensePin, uint16_t resolution);
 
 		/**
 		 * Initializes the library by optionally setting additional parameters.
@@ -71,7 +79,12 @@ class Battery {
 		 * Returns the current battery voltage in millivolts.
 		 */
 		uint16_t voltage();
-
+		
+		// added by Mickey
+		void setUpdateInterval(uint16_t interval);
+		uint16_t lastVoltage;
+		void loop();
+		
 	private:
 		uint16_t refVoltage;
 		uint16_t minVoltage;
@@ -81,6 +94,12 @@ class Battery {
 		uint8_t activationPin;
 		uint8_t activationMode;
 		mapFn_t mapFunction;
+		
+		// added by Mickey
+		uint16_t dacResolution = 1024;
+		uint16_t updateInterval = 10000;
+		readState_t curReadState;
+		unsigned long lastPassAt = 0;
 };
 
 //

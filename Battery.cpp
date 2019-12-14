@@ -14,16 +14,19 @@
 
  You should have received a copy of the GNU General Public License
  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+ Fork by Mickey Chan
  */
 
 #include "Battery.h"
 #include <Arduino.h>
 
-Battery::Battery(uint16_t minVoltage, uint16_t maxVoltage, uint8_t sensePin) {
+Battery::Battery(uint16_t minVoltage, uint16_t maxVoltage, uint8_t sensePin, uint16_t resolution) {
 	this->sensePin = sensePin;
 	this->activationPin = 0xFF;
 	this->minVoltage = minVoltage;
 	this->maxVoltage = maxVoltage;
+	this->dacResolution = resolution;
 }
 
 void Battery::begin(uint16_t refVoltage, float dividerRatio, mapFn_t mapFunction) {
@@ -66,9 +69,40 @@ uint16_t Battery::voltage() {
 	}
 	analogRead(sensePin);
 	delay(2); // allow the ADC to stabilize
-	uint16_t reading = analogRead(sensePin) * dividerRatio * refVoltage / 1024;
+	uint16_t reading = analogRead(sensePin) * dividerRatio * refVoltage / this->dacResolution;
 	if (activationPin != 0xFF) {
 		digitalWrite(activationPin, !activationMode);
 	}
 	return reading;
+}
+
+// Added by Mickey
+void Battery::setUpdateInterval(uint16_t interval) {
+	this->updateInterval = interval;
+}
+
+void Battery::loop() {
+	unsigned long curTime = millis();
+	if (this->curReadState == IDLE && (unsigned long)(curTime - this->lastPassAt) >= this->updateInterval) {
+		if (this->activationPin != 0xFF) {
+			digitalWrite(this->activationPin, this->activationMode);
+		}
+		this->lastPassAt = curTime;
+		this->curReadState = PASS_1;
+		return;
+	} else if (this->curReadState == PASS_1 && (unsigned long)(curTime - this->lastPassAt) >= 1) {
+		analogRead(this->sensePin);
+		this->lastPassAt = curTime;
+		this->curReadState = PASS_2;
+		return;
+	} else if (this->curReadState == PASS_2 && (unsigned long)(curTime - this->lastPassAt) >= 2000) {
+		uint16_t reading = analogRead(this->sensePin) * this->dividerRatio * this->refVoltage / this->dacResolution;
+		if (this->activationPin != 0xFF) {
+			digitalWrite(this->activationPin, !this->activationMode);
+		}
+		this->lastVoltage = reading;
+		this->lastPassAt = curTime;
+		this->curReadState = IDLE;
+		return;
+	}
 }
