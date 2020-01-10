@@ -96,7 +96,13 @@ void Battery::loop() {
 		this->curReadState = PASS_2;
 		return;
 	} else if (this->curReadState == PASS_2 && (unsigned long)(curTime - this->lastPassAt) >= 2000) {
-		uint16_t reading = analogRead(this->sensePin) * this->dividerRatio * this->refVoltage / this->dacResolution;
+		#if defined(ESP32)
+		// Adjustment for ESP32 DAC
+		uint16_t reading = (analogRead(this->sensePin) * this->refVoltage  / (float)this->dacResolution + 0.1132) * this->dividerRatio;
+		#else
+		uint16_t reading = analogRead(this->sensePin) * this->dividerRatio * this->refVoltage / (float)this->dacResolution;
+		#endif
+		
 		if (this->activationPin != 0xFF) {
 			digitalWrite(this->activationPin, !this->activationMode);
 		}
