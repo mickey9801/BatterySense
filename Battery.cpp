@@ -69,7 +69,13 @@ uint16_t Battery::voltage() {
 	}
 	analogRead(sensePin);
 	delay(2); // allow the ADC to stabilize
+	#if defined(ESP32)
+	// Adjustment for ESP32 DAC
+	uint16_t reading = (analogRead(sensePin) / ((float)this->dacResolution - 1.0) * refVoltage + 0.1132) * dividerRatio;
+	#else
 	uint16_t reading = analogRead(sensePin) * dividerRatio * refVoltage / this->dacResolution;
+	#endif
+	
 	if (activationPin != 0xFF) {
 		digitalWrite(activationPin, !activationMode);
 	}
@@ -98,9 +104,10 @@ void Battery::loop() {
 	} else if (this->curReadState == PASS_2 && (unsigned long)(curTime - this->lastPassAt) >= 2000) {
 		#if defined(ESP32)
 		// Adjustment for ESP32 DAC
-		uint16_t reading = (analogRead(this->sensePin) * this->refVoltage  / (float)this->dacResolution + 0.1132) * this->dividerRatio;
+		uint16_t _rr = analogRead(sensePin) / ((float)this->dacResolution - 1.0) * refVoltage  + 0.1132;
+		uint16_t reading = _rr * dividerRatio;
 		#else
-		uint16_t reading = analogRead(this->sensePin) * this->dividerRatio * this->refVoltage / (float)this->dacResolution;
+		uint16_t reading = analogRead(sensePin) * dividerRatio * refVoltage / (float)this->dacResolution;
 		#endif
 		
 		if (this->activationPin != 0xFF) {
